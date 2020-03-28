@@ -2,7 +2,6 @@ import torch
 import cv2
 import sys
 import os
-import flops_counter
 import time
 import argparse
 import pickle
@@ -20,14 +19,10 @@ heartbeat_interval = 0.5
 curr_frame_id = -1
 frame_id_mutex = threading.Lock()
 heart_beat_flag = True
-
+resnet_model_choices = GetResnet().get_model_choices()
 
 parse = argparse.ArgumentParser("Run an SSD with or without tagging")
-parse.add_argument("--net", dest="net", default='mb1-ssd', choices=['mb1-ssd', 'vgg16-ssd'])
-parse.add_argument("--path", dest="model_path", default='models/mobilenet-v1-ssd-mp-0_675.pth')
-parse.add_argument("--label", dest="label_path", default='models/voc-model-labels.txt')
-parse.add_argument("--fps", dest="fps", default=-1, help="Enable fps control with tagging at desired fps [default -1, disabled]")
-parse.add_argument("--ft",dest="ft",default=0)
+parse.add_argument("--net", dest="net", default='resnet18', choices=resnet_model_choices)
 parse.add_argument("--hbt", dest="heartbeat_input", default=heartbeat_interval)
 parse.add_argument("--chkpt", dest="checkpoint_level", default=0)
 
@@ -58,3 +53,17 @@ def clean_up_files():
         print("Error while deleting file ")
 
 
+def run_model(model, frame_paths):
+    frame_number = 1
+    for image_path in frame_paths:
+        orig_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        image_copy = orig_image.copy()
+        model.forward(image_copy)
+        print('Frame Number : ', frame_number)
+        frame_number += 1
+
+if __name__ == '__main__':
+    PATH_TO_TEST_IMAGES_DIR = 'D:/Tensorflow/data/kitti_data'
+    TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, '{:010d}.png'.format(i)) for i in range(0, 154)]
+    resnet_model = GetResnet().get_model('resnet18')
+    run_model(resnet_model, TEST_IMAGE_PATHS)
