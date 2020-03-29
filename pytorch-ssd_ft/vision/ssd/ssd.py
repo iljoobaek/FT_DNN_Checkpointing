@@ -10,9 +10,14 @@ from collections import namedtuple
 import pickle
 GraphPath = namedtuple("GraphPath", ['s0', 'name', 's1'])  #
 # Define a common checkpoint path
-CHECKPOINT_1_PATH = 'cp1.pt'
-CHECKPOINT_2_PATH = 'cp2.pt'
-CHECKPOINT_3_PATH = 'cp3.pt'
+
+cwd_path = '/home/jetson/Workbench/cuMiddleware/benchmark/nandhakishore/cmu-pytorch-ssd/'
+CHECKPOINT_1_PATH = cwd_path + 'cp1.pt'
+CHECKPOINT_2_PATH = cwd_path + "cp2.pt"
+CHECKPOINT_3_PATH = cwd_path + "cp3.pt"
+#CHECKPOINT_1_PATH = 'cp1.pt'
+#CHECKPOINT_2_PATH = 'cp2.pt'
+#CHECKPOINT_3_PATH = 'cp3.pt'
 
 
 class SSD(nn.Module):
@@ -49,6 +54,7 @@ class SSD(nn.Module):
         start_layer_index = 0
         header_index = 0
         end_layer_index = 0
+        frame_start_time = time.time()
         if((not(os.path.exists(CHECKPOINT_2_PATH))) and (not(os.path.exists(CHECKPOINT_3_PATH)))):
             if(os.path.exists(CHECKPOINT_1_PATH)):
                 x = torch.load(CHECKPOINT_1_PATH)
@@ -91,21 +97,21 @@ class SSD(nn.Module):
                     header_index += 1
                     confidences.append(confidence)
                     locations.append(location)
-
+                
+                frame_cp1_pickle_before = time.time()
                 fd1 = open("confidence.pkl","wb")
                 pickle.dump(confidences,fd1)   
                 fd2 = open("locations.pkl","wb")
                 pickle.dump(locations,fd2)
                 fd3 = open("end_layer_index.pkl","wb")
                 pickle.dump(end_layer_index,fd3)
-                
+                frame_cp1_save_before = time.time()
                 try:
                     torch.save(x,CHECKPOINT_1_PATH)
                 except KeyboardInterrupt:
                     torch.save(x,CHECKPOINT_1_PATH)
                 print("Source layer done, checkpoint 1 saved")
-            time.sleep(0.5)
-
+            frame_cp1_after = time.time()
         if(not(os.path.exists(CHECKPOINT_3_PATH))):
             if(os.path.exists(CHECKPOINT_2_PATH)):
                 x = torch.load(CHECKPOINT_2_PATH)
@@ -114,6 +120,7 @@ class SSD(nn.Module):
             else:
                 for layer in self.base_net[end_layer_index:]:
                     x = layer(x)
+                frame_cp2_save_before = time.time()
                 try:
                     torch.save(x,CHECKPOINT_2_PATH)
                 except KeyboardInterrupt:
@@ -121,9 +128,8 @@ class SSD(nn.Module):
             print("Base net layer done, checkpoint 2 saved")
             if(os.path.exists(CHECKPOINT_1_PATH)):
                 os.remove(CHECKPOINT_1_PATH)
-            time.sleep(0.5)
 
-
+        frame_cp2_after = time.time()
         if(os.path.exists(CHECKPOINT_3_PATH)):
             x = torch.load(CHECKPOINT_3_PATH)
             fd1 = open("confidence.pkl","rb")
@@ -139,10 +145,12 @@ class SSD(nn.Module):
                 header_index += 1
                 confidences.append(confidence)
                 locations.append(location)
+            frame_cp3_pickle_before = time.time()
             fd1 = open("confidence.pkl","wb")
             pickle.dump(confidences,fd1)   
             fd2 = open("locations.pkl","wb")
             pickle.dump(locations,fd2)
+            frame_cp3_save_before = time.time()
             try:
                 torch.save(x,CHECKPOINT_3_PATH)
             except KeyboardInterrupt:
@@ -150,12 +158,22 @@ class SSD(nn.Module):
             print("Extra layers done, checkpoint 3 saved")
             if(os.path.exists(CHECKPOINT_2_PATH)):
                 os.remove(CHECKPOINT_2_PATH)
-        time.sleep(0.5)
+        frame_cp3_after = time.time()
         confidences = torch.cat(confidences, 1)
         locations = torch.cat(locations, 1)
         
-
-        
+        print('Frame start time:', 0)
+        print('CP1 before pickle save: ', frame_cp1_pickle_before - frame_start_time)
+        print('CP1 after pickle save: ', frame_cp1_save_before - frame_cp1_pickle_before)
+        print('Cp1 after torch.save: ', frame_cp1_after - frame_cp1_save_before)
+        print('CP1 overall time:', frame_cp1_after - frame_start_time)
+        print('CP2 before torch.save:', frame_cp2_save_before - frame_cp1_after)
+        print('CP2 after torch.save and CP3 start:', frame_cp2_after - frame_cp2_save_before)
+        print('CP2 overall time:', frame_cp2_after - frame_cp1_after)
+        print('CP3 before pickle save: ', frame_cp3_pickle_before - frame_cp2_after)
+        print('Cp3 after pickle save: ', frame_cp3_save_before - frame_cp3_pickle_before)
+        print('CP3 after torch.save:', frame_cp3_after - frame_cp3_save_before)
+        print('Cp2 overall time: ', frame_cp3_after - frame_cp2_after)
 
         if self.is_test:
             confidences = F.softmax(confidences, dim=2)
