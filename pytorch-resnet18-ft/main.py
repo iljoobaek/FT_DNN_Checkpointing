@@ -90,7 +90,7 @@ def run_model(model, images_iterator):
         break
 
 if __name__ == '__main__':
-    PATH_TO_TEST_IMAGES_DIR = 'D:\\Tensorflow\\data\\kitti_data'
+    PATH_TO_TEST_IMAGES_DIR = '/home/jetson/Workbench/CARRS_FT_int/cuMiddleware/benchmark/data/kitti_data_resnet'
     model = initialize_model('resnet18')
     data = get_data(PATH_TO_TEST_IMAGES_DIR)
     run_model(model, data)
