@@ -3,10 +3,10 @@ import torch.nn as nn
 import os
 import urllib.request
 
-CHECKPOINT_1_PATH = '/Users/pytorch-image-classification/cp1.pt'
-CHECKPOINT_2_PATH = '/Users/pytorch-image-classification/cp2.pt'
-CHECKPOINT_3_PATH = '/Users/pytorch-image-classification/cp3.pt'
-CHECKPOINT_4_PATH = '/Users/pytorch-image-classification/cp4.pt'
+CHECKPOINT_1_PATH = 'cp1.pt'
+CHECKPOINT_2_PATH = 'cp2.pt'
+CHECKPOINT_3_PATH = 'cp3.pt'
+CHECKPOINT_4_PATH = 'cp4.pt'
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',

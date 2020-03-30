@@ -7,13 +7,21 @@ import argparse
 import pickle
 import threading
 import time
+import torch.nn.functional as F
+import torch.optim as optim
+import torchvision
+import torchvision.transforms as transforms
+import torchvision.datasets as datasets
 from resnet_library_ft import *
+
+
 # Checkpoint paths to save the checkpoints to.
 CHECKPOINT_1_PATH = 'cp1.pt'
 CHECKPOINT_2_PATH = 'cp2.pt'
 CHECKPOINT_3_PATH = 'cp3.pt'
 CHECKPOINT_4_PATH = 'cp4.pt'
 
+device = torch.device('cuda')
 
 heartbeat_interval = 0.5
 curr_frame_id = -1
@@ -53,17 +61,36 @@ def clean_up_files():
         print("Error while deleting file ")
 
 
-def run_model(model, frame_paths):
+def initialize_model(architecture):
+    model = GetResnet().get_model(architecture).to(device)
+    for param in model.parameters():
+        param.requires_grad = False
+    return model
+
+def get_data(data_path):
+    image_transform = transforms.Compose([
+                           transforms.CenterCrop((224, 224)),
+                           transforms.ToTensor(),
+                           transforms.Normalize((0.485, 0.456, 0.406),(0.229, 0.224, 0.225))
+                       ])
+    images = datasets.ImageFolder(data_path, image_transform)
+    images_iterator = torch.utils.data.DataLoader(images)
+    return images_iterator
+
+
+
+def run_model(model, images_iterator):
     frame_number = 1
-    for image_path in frame_paths:
-        orig_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-        image_copy = orig_image.copy()
-        model.forward(image_copy)
+    for (x, y) in images_iterator:
+        x = x.to(device)
+        y = y.to(device)
+        model(x)
         print('Frame Number : ', frame_number)
         frame_number += 1
+        break
 
 if __name__ == '__main__':
-    PATH_TO_TEST_IMAGES_DIR = 'D:/Tensorflow/data/kitti_data'
-    TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, '{:010d}.png'.format(i)) for i in range(0, 154)]
-    resnet_model = GetResnet().get_model('resnet18')
-    run_model(resnet_model, TEST_IMAGE_PATHS)
+    PATH_TO_TEST_IMAGES_DIR = 'D:\\Tensorflow\\data\\kitti_data'
+    model = initialize_model('resnet18')
+    data = get_data(PATH_TO_TEST_IMAGES_DIR)
+    run_model(model, data)
