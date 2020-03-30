@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import os
 import urllib.request
+import time
 
 CHECKPOINT_1_PATH = 'cp1.pt'
 CHECKPOINT_2_PATH = 'cp2.pt'
@@ -19,6 +20,18 @@ model_urls = {
     'wide_resnet50_2': 'https://download.pytorch.org/models/wide_resnet50_2-95faca4d.pth',
     'wide_resnet101_2': 'https://download.pytorch.org/models/wide_resnet101_2-32ee1156.pth',
 }
+
+
+def cp_exists(cp_num):
+    if cp_num == 1:
+        return os.path.exists(CHECKPOINT_1_PATH)
+    elif cp_num == 2:
+        return os.path.exists(CHECKPOINT_2_PATH)
+    elif cp_num == 3:
+        return os.path.exists(CHECKPOINT_3_PATH)
+    else:
+        return os.path.exists(CHECKPOINT_4_PATH)
+
 
 def load_state_dict_from_url(architecture, url, progress):
     architecture_path = architecture + '.pth'
@@ -201,38 +214,61 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
+    def checkpoint_1(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        return x
+    def checkpoint_2(self, x):
+        x = self.relu(x)
+        x = self.maxpool(x)
+        return x
+    
+    def checkpoint_3(self, x):
+        x = self.layer1(x)
+        x = self.layer2(x)
+        return x
+    
+    def checkpoint_4(self, x):
+        x = self.layer3(x)
+        x = self.layer4(x)
+        return x
+        
     def forward(self, x):
-        import os
-        if(os.path.exists(CHECKPOINT_1_PATH)):
+        frame_start_time = time.time()
+        if cp_exists(1) and not cp_exists(2) and not cp_exists(3) and not cp_exists(4):
             x = torch.load(CHECKPOINT_1_PATH)
             print("Checkpoint 1 recovered")
         else:
             x = self.conv1(x)
             x = self.bn1(x)
+            cp1_before_save = time.time()
             torch.save(x,CHECKPOINT_1_PATH)
-
-        print("First layer done")
-        if(os.path.exists(CHECKPOINT_2_PATH)):
+            cp1_after_save = time.time()
+        #print("First layer done")
+        if cp_exists(2) and not cp_exists(3) and not cp_exists(4):
             x = torch.load(CHECKPOINT_2_PATH)
             print("Checkpoint 2 recovered")
         else:
             x = self.relu(x)
             x = self.maxpool(x)
+            cp2_before_save = time.time()
             torch.save(x,CHECKPOINT_2_PATH)
-        print("Second layer done")
+            cp2_after_save = time.time()
+        #print("Second layer done")
 
-        if(os.path.exists(CHECKPOINT_3_PATH)):
+        if cp_exists(3) and not cp_exists(4):
             x = torch.load(CHECKPOINT_3_PATH)
             print("Checkpoint 3 recovered")
 
         else:
             x = self.layer1(x)
             x = self.layer2(x)
+            cp3_before_save = time.time()
             torch.save(x,CHECKPOINT_3_PATH)
+            cp3_after_save = time.time()
+        #print("third layer done")
 
-        print("third layer done")
-
-        if(os.path.exists(CHECKPOINT_4_PATH)):
+        if cp_exists(4):
             x = torch.load(CHECKPOINT_4_PATH)
             print("Checkpoint 4 recovered")
 
@@ -240,10 +276,25 @@ class ResNet(nn.Module):
 
             x = self.layer3(x)
             x = self.layer4(x)
+            cp4_before_save = time.time()
             torch.save(x,CHECKPOINT_4_PATH)
-
-        print("Fourth layer done")
-
+            cp4_after_save= time.time()
+        #print("Fourth layer done")
+        print('Frame Times: ')
+        print('Checkpoint 1 after processing before torch.save:', cp1_before_save - frame_start_time)
+        print('Checkpoint 1 time taken to torch.save:', cp1_after_save - cp1_before_save)
+        print('Checkpoint1 overall time including save time: ', cp1_after_save - frame_start_time)
+        print('Checkpoint 2 processing time before torch.save', cp2_before_save - cp1_after_save)
+        print('Checkpoint 2 time taken to torch.save:', cp2_after_save - cp2_before_save)
+        print('Checkpoint2 overall time including save time: ', cp2_after_save - cp1_after_save)
+        print('Checkpoint 3 processing time before torch.save', cp3_before_save - cp2_after_save)
+        print('Checkpoint 3 time taken to torch.save:', cp3_after_save - cp3_before_save)
+        print('Checkpoint3 overall time including save time: ', cp3_after_save - cp3_after_save)
+        print('Checkpoint 4 processing time before torch.save', cp4_before_save - cp3_after_save)
+        print('Checkpoint 4 time taken to torch.save:', cp4_after_save - cp4_before_save)
+        print('Checkpoint4 overall time including save time: ', cp4_after_save - cp3_after_save)
+        print('Overall Time taken for processing frame, including saving checkpoints: ', cp4_after_save - frame_start_time)
+        
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
